@@ -74,7 +74,7 @@ Resources:
     Properties:
       Description: "GuardDuty to ACL Function"
       Architectures:
-        - arm64
+        - x86_64
       Handler : "guardduty_to_acl_lambda.lambda_handler"
       MemorySize: 1024
       Timeout: 300
@@ -258,7 +258,7 @@ Resources:
     Properties:
       Description: "Prune old entries in WAF ACL and NACLs"
       Architectures:
-        - arm64
+        - x86_64
       Handler : "prune_old_entries.lambda_handler"
       MemorySize: 1024
       Timeout: 300

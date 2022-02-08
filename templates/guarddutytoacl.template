@@ -223,10 +223,7 @@ Resources:
         -
           AttributeName: "CreatedAt"
           KeyType: "RANGE"
-      ProvisionedThroughput:
-        ReadCapacityUnits: "5"
-        WriteCapacityUnits: "5"
-
+      BillingMode: "PAY_PER_REQUEST"
   CloudFrontBlocklistIPSetV4:
     Type: 'AWS::WAFv2::IPSet'
     Properties:

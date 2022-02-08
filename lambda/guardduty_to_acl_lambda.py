@@ -35,13 +35,11 @@ logger.setLevel(logging.INFO)
 API_CALL_NUM_RETRIES = 1
 ACLMETATABLE = os.environ['ACLMETATABLE']
 SNSTOPIC = os.environ['SNSTOPIC']
-CLOUDFRONT_IP_SET = os.environ['CLOUDFRONT_IP_SET']
 REGIONAL_IP_SET = os.environ['REGIONAL_IP_SET']
 
-CloudFrontIpSet = CLOUDFRONT_IP_SET.split("|")
 RegionalIpSet = REGIONAL_IP_SET.split("|")
 
-logger.info("log -- regional ip set: %s -- cloudfront ip set: %s " % (RegionalIpSet, CloudFrontIpSet))
+logger.info("log -- regional ip set: %s" % (RegionalIpSet))
 
 
 #======================================================================================================================
@@ -115,7 +113,6 @@ def waf_update_ip_sets():
     if ddb_ips:
         logger.info('log -- adding Regional and CloudFront WAF ip entries')
         waf_update_ip_set(RegionalIpSet[0], RegionalIpSet[1], RegionalIpSet[2], ddb_ips)
-        waf_update_ip_set(CloudFrontIpSet[0], CloudFrontIpSet[1], CloudFrontIpSet[2], ddb_ips)
 
 
 # Get the current NACL Id associated with subnet
@@ -387,7 +384,6 @@ def admin_notify(iphost, findingtype, naclid, region, instanceid, findingid):
     MESSAGE = ("GuardDuty to ACL Event Info:\r\n"
                  "Suspicious activity detected from host " + iphost + " due to " + findingtype +
                  "against EC2 Instance: " + instanceid + ". The following ACL resources were targeted for update as needed: " + '\n'
-                 "CloudFront IP Set: " + CLOUDFRONT_IP_SET + '\n'
                  "Regional IP Set: " + REGIONAL_IP_SET + '\n'
                  "VPC NACL: " + naclid + '\n'
                  "Region: " + region + '\n'
@@ -459,7 +455,7 @@ def lambda_handler(event, context):
 
             # Update WAF IP Sets
             if update_counter > 0:
-                logger.info('log -- adding Regional and CloudFront WAF IP set entry for host, %s from CloudFront Ip set %s and REGION IP set %s.' % (HostIp, CLOUDFRONT_IP_SET, REGIONAL_IP_SET))
+                logger.info('log -- adding Regional WAF IP set entry for host, %s from REGION IP set %s.' % (HostIp, REGIONAL_IP_SET))
                 waf_update_ip_sets()
 
             #Send Notification

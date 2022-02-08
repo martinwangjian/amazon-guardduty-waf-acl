@@ -15,13 +15,6 @@ Parameters:
     Description: Email address to receive notifications. Must be a valid email address.
     Type: String
     AllowedPattern: ^(?:[a-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$
-  CloudFrontWebACL:
-    Type: String
-    Default: False
-    AllowedValues:
-      - True
-      - False
-    Description: Create CloudFront Web ACL? CloudFront IP set will be created automatically.
   RegionalWebACL:
     Type: String
     Default: False
@@ -51,7 +44,6 @@ Metadata:
       Parameters:
       - AdminEmail
       - Retention
-      - CloudFrontIPSetId
       - RegionalIPSetId
     - Label:
         default: Artifact Configuration
@@ -64,8 +56,6 @@ Metadata:
         default: Notification email (REQUIRED)
       Retention:
         default: Retention time in minutes
-      CloudFrontIPSetId:
-        default: IP Set for global CloudFront WAF
       RegionalIPSetId:
         default: IP Set for regional WAF
       ArtifactsBucket:
@@ -74,8 +64,7 @@ Metadata:
         default: S3 path to artifacts
 
 Conditions:
-# Create CloudFront or Regional Web ACL?
-  CreateCloudFrontWebACL: !Equals [!Ref CloudFrontWebACL, True ]
+# Create Regional Web ACL?
   CreateRegionalWebACL: !Equals [!Ref RegionalWebACL, True ]
 
 Resources:
@@ -95,7 +84,6 @@ Resources:
         Variables:
           ACLMETATABLE: !Ref GuardDutytoACLDDBTable
           REGIONAL_IP_SET: !Ref RegionalBlocklistIPSetV4
-          CLOUDFRONT_IP_SET: !Ref CloudFrontBlocklistIPSetV4
           SNSTOPIC: !Ref GuardDutytoACLSNSTopic
       Code:
         S3Bucket: !Sub ${ArtifactsBucket}
@@ -126,12 +114,6 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          -
-            Effect: Allow
-            Action:
-            - wafv2:GetIPSet
-            - wafv2:UpdateIPSet
-            Resource: !Sub '${CloudFrontBlocklistIPSetV4.Arn}'
           -
             Effect: Allow
             Action:
@@ -224,51 +206,6 @@ Resources:
           AttributeName: "CreatedAt"
           KeyType: "RANGE"
       BillingMode: "PAY_PER_REQUEST"
-  CloudFrontBlocklistIPSetV4:
-    Type: 'AWS::WAFv2::IPSet'
-    Properties:
-      Description: GD2ACLIPSetV4
-      Scope: CLOUDFRONT
-      IPAddressVersion: IPV4
-      Addresses:
-        - 127.0.0.0/8
-        
-  CloudFrontBlocklistIPSetV6:
-    Type: 'AWS::WAFv2::IPSet'
-    Properties:
-      Description: GD2ACLIPSetV6
-      Scope: CLOUDFRONT
-      IPAddressVersion: IPV6
-      Addresses:
-        - ::1/128
-
-  CloudFrontBlocklistWebACL:
-    Condition: CreateCloudFrontWebACL
-    Type: AWS::WAFv2::WebACL
-    Properties:
-      Scope: CLOUDFRONT
-      DefaultAction:
-        Allow: {}
-      VisibilityConfig:
-        SampledRequestsEnabled: true
-        CloudWatchMetricsEnabled: true
-        MetricName: GD2ACLCloudFrontBlocklistWebACL
-      Rules:
-        - Name: CloudFrontBlocklistIPSetRule
-          Priority: 1
-          Action:
-            Block: {}
-          VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
-            MetricName: CloudFrontBlockIPMetric
-          Statement:
-            OrStatement:
-              Statements:
-              - IPSetReferenceStatement: 
-                  Arn: !GetAtt CloudFrontBlocklistIPSetV4.Arn
-              - IPSetReferenceStatement:
-                  Arn: !GetAtt CloudFrontBlocklistIPSetV6.Arn
 
   RegionalBlocklistIPSetV4:
     Type: 'AWS::WAFv2::IPSet'
@@ -331,7 +268,6 @@ Resources:
         Variables:
           ACLMETATABLE: !Ref GuardDutytoACLDDBTable
           REGIONAL_IP_SET: !Ref RegionalBlocklistIPSetV4
-          CLOUDFRONT_IP_SET: !Ref CloudFrontBlocklistIPSetV4
           RETENTION: !Ref Retention
       Code:
         S3Bucket: !Sub ${ArtifactsBucket}
@@ -362,12 +298,6 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          -
-            Effect: Allow
-            Action:
-            - wafv2:GetIPSet
-            - wafv2:UpdateIPSet
-            Resource: !Sub '${CloudFrontBlocklistIPSetV4.Arn}'
           -
             Effect: Allow
             Action:
@@ -452,17 +382,10 @@ Outputs:
   RegionalIPSetId:
     Description: Regional IP Set
     Value: !Ref RegionalBlocklistIPSetV4
-  CloudFrontIPSetId:
-    Description: CloudFront IP Set
-    Value: !Ref CloudFrontBlocklistIPSetV4
   RegionalWebACL:
     Condition: CreateRegionalWebACL
     Description: Regional Web ACL
     Value: !Ref RegionalBlocklistWebACL
-  CloudFrontWebACL:
-    Condition: CreateCloudFrontWebACL
-    Description: CloudFront Web ACL
-    Value: !Ref CloudFrontBlocklistWebACL
   Retention:
     Description: ACL Entry Time to Live in Minutes
     Value: !Ref Retention

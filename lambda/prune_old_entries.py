@@ -33,10 +33,8 @@ logger.setLevel(logging.INFO)
 API_CALL_NUM_RETRIES = 1
 ACLMETATABLE = os.environ['ACLMETATABLE']
 RETENTION = os.environ['RETENTION']
-CLOUDFRONT_IP_SET = os.environ['CLOUDFRONT_IP_SET']
 REGIONAL_IP_SET = os.environ['REGIONAL_IP_SET']
 
-CloudFrontIpSet = CLOUDFRONT_IP_SET.split("|")
 RegionalIpSet = REGIONAL_IP_SET.split("|")
 
 #======================================================================================================================
@@ -95,9 +93,8 @@ def waf_update_ip_set(ip_set_name, ip_set_id, ip_set_scope, source_ips):
 def waf_update_ip_sets():
     ddb_ips = get_ddb_ips()
     if ddb_ips:
-        logger.info('log -- adding Regional and CloudFront WAF ip entries')
+        logger.info('log -- adding Regional WAF ip entries')
         waf_update_ip_set(RegionalIpSet[0], RegionalIpSet[1], RegionalIpSet[2], ddb_ips)
-        waf_update_ip_set(CloudFrontIpSet[0], CloudFrontIpSet[1], CloudFrontIpSet[2], ddb_ips)
 
 
 def delete_netacl_rule(netacl_id, rule_no):
@@ -186,7 +183,7 @@ def lambda_handler(event, context):
                     logger.error('log -- could not delete item')
 
             # Update WAF IP Sets
-            logger.info('log -- update CloudFront Ip set %s and Regional IP set %s.' % (CLOUDFRONT_IP_SET, REGIONAL_IP_SET))
+            logger.info('log -- update Regional IP set %s.' % (REGIONAL_IP_SET))
             waf_update_ip_sets()
             
             logger.info("Pruning Completed")
